@@ -2,6 +2,7 @@
  * ==========================================================================
  * SYBERCEC — DAILY REPORT
  * Frontend Controller (script.js)
+ * Supports: Add, Edit, and Delete reports directly with Google Sheets
  * ==========================================================================
  */
 
@@ -35,7 +36,15 @@ const statusText = document.getElementById("status-text");
 const recentList = document.getElementById("recent-list");
 const refreshReportsBtn = document.getElementById("refresh-reports-btn");
 
+// DOM Elements - Edit Mode
+const editModeBanner = document.getElementById("edit-mode-banner");
+const editRowLabel = document.getElementById("edit-row-label");
+const cancelEditBtn = document.getElementById("cancel-edit-btn");
+const editRowInput = document.getElementById("edit-row-input");
+const formActionInput = document.getElementById("form-action-input");
+
 let isSubmitting = false;
+let currentReportsData = [];
 
 // ==========================================================================
 // Initialization & Auth Guard
@@ -104,9 +113,6 @@ function initializeDate() {
   updateDatePreview(today);
 }
 
-/**
- * Formats a Date object to "DD MMM YYYY" (e.g. "06 OCT 2026")
- */
 function updateDatePreview(dateObj) {
   const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   const day = String(dateObj.getDate()).padStart(2, "0");
@@ -115,9 +121,6 @@ function updateDatePreview(dateObj) {
   datePreview.textContent = `${day} ${month} ${year}`;
 }
 
-/**
- * Converts "YYYY-MM-DD" from <input type="date"> to "DD/MM/YYYY" for Google Sheets Column A
- */
 function formatToDDMMYYYY(yyyyMmDd) {
   if (!yyyyMmDd) return "";
   const parts = yyyyMmDd.split("-");
@@ -127,9 +130,15 @@ function formatToDDMMYYYY(yyyyMmDd) {
   return yyyyMmDd;
 }
 
-/**
- * Initializes default sensible start and end times
- */
+function parseDDMMYYYYtoInputDate(ddMmYyyy) {
+  if (!ddMmYyyy) return "";
+  const parts = ddMmYyyy.split("/");
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  return ddMmYyyy;
+}
+
 function initializeDefaultTimes() {
   if (!startTimeInput.value) {
     startTimeInput.value = "19:00";
@@ -139,9 +148,6 @@ function initializeDefaultTimes() {
   }
 }
 
-/**
- * Formats standard 24-hr time string "HH:mm" to 12-hr format "hh:mm AM/PM"
- */
 function formatTo12Hour(time24) {
   if (!time24) return "";
   const parts = time24.split(":");
@@ -153,6 +159,20 @@ function formatTo12Hour(time24) {
   hours = hours ? hours : 12;
   const formattedHours = String(hours).padStart(2, "0");
   return `${formattedHours}:${minutes} ${ampm}`;
+}
+
+function parse12HourToTimeInput(time12) {
+  if (!time12) return "";
+  const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return "";
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = match[3] ? match[3].toUpperCase() : "";
+
+  if (ampm === "PM" && hours < 12) hours += 12;
+  if (ampm === "AM" && hours === 12) hours = 0;
+
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
 }
 
 function setupEventListeners() {
@@ -171,6 +191,94 @@ function setupEventListeners() {
       loadRecentReports(true);
     });
   }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener("click", exitEditMode);
+  }
+}
+
+// ==========================================================================
+// Edit Mode Handling
+// ==========================================================================
+function startEditReport(report) {
+  if (!report) return;
+
+  const inputDate = parseDDMMYYYYtoInputDate(report.date);
+  if (inputDate) {
+    dateInput.value = inputDate;
+    const [y, m, d] = inputDate.split("-").map(Number);
+    updateDatePreview(new Date(y, m - 1, d));
+  }
+
+  taskInput.value = report.task || "";
+
+  const parsedStart = parse12HourToTimeInput(report.startTime);
+  if (parsedStart) startTimeInput.value = parsedStart;
+
+  const parsedEnd = parse12HourToTimeInput(report.endTime);
+  if (parsedEnd) endTimeInput.value = parsedEnd;
+
+  editRowInput.value = report.row || "";
+  formActionInput.value = "update";
+  editRowLabel.textContent = `(${report.date || ""})`;
+  editModeBanner.style.display = "flex";
+  btnText.textContent = "UPDATE REPORT";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  taskInput.focus();
+}
+
+function exitEditMode() {
+  editRowInput.value = "";
+  formActionInput.value = "add";
+  editModeBanner.style.display = "none";
+  btnText.textContent = "SAVE REPORT";
+  taskInput.value = "";
+  initializeDate();
+  initializeDefaultTimes();
+}
+
+// ==========================================================================
+// Delete Handling
+// ==========================================================================
+async function deleteReport(report, cardElement) {
+  if (!confirm(`Are you sure you want to delete this report?\n\nDate: ${report.date}\nTask: ${report.task}`)) {
+    return;
+  }
+
+  if (cardElement) {
+    cardElement.style.opacity = "0.4";
+    cardElement.style.pointerEvents = "none";
+  }
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append("action", "delete");
+    formData.append("row", report.row);
+
+    // Call doPost with delete
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData.toString()
+    });
+
+    if (cardElement) cardElement.remove();
+    showStatus("✓ Report deleted successfully", "success");
+
+    setTimeout(() => {
+      loadRecentReports(false);
+    }, 2000);
+
+  } catch (err) {
+    console.error("Delete failed:", err);
+    showStatus("Unable to delete report. Please try again.", "error");
+    if (cardElement) {
+      cardElement.style.opacity = "1";
+      cardElement.style.pointerEvents = "auto";
+    }
+  }
 }
 
 // ==========================================================================
@@ -185,6 +293,8 @@ async function handleSubmit(event) {
   const taskValue = taskInput.value.trim();
   const startTimeValue = startTimeInput.value;
   const endTimeValue = endTimeInput.value;
+  const actionType = formActionInput.value || "add";
+  const targetRow = editRowInput.value;
 
   hideStatus();
 
@@ -220,6 +330,10 @@ async function handleSubmit(event) {
 
   try {
     const formData = new URLSearchParams();
+    formData.append("action", actionType);
+    if (actionType === "update" && targetRow) {
+      formData.append("row", targetRow);
+    }
     formData.append("date", formattedDate);
     formData.append("task", taskValue);
     formData.append("startTime", formattedStartTime);
@@ -235,21 +349,22 @@ async function handleSubmit(event) {
     });
 
     handleSuccessfulSubmission({
+      row: targetRow,
       date: formattedDate,
       task: taskValue,
       startTime: formattedStartTime,
       endTime: formattedEndTime
-    });
+    }, actionType === "update");
 
   } catch (err) {
     console.warn("Direct fetch failed, falling back to hidden iframe form POST:", err);
-    submitViaHiddenIframe(formattedDate, taskValue, formattedStartTime, formattedEndTime);
+    submitViaHiddenIframe(actionType, targetRow, formattedDate, taskValue, formattedStartTime, formattedEndTime);
   } finally {
     setSubmittingState(false);
   }
 }
 
-function submitViaHiddenIframe(date, task, startTime, endTime) {
+function submitViaHiddenIframe(action, row, date, task, startTime, endTime) {
   try {
     const tempForm = document.createElement("form");
     tempForm.method = "POST";
@@ -257,20 +372,22 @@ function submitViaHiddenIframe(date, task, startTime, endTime) {
     tempForm.target = "hidden_submission_iframe";
     tempForm.style.display = "none";
 
-    const fields = { date, task, startTime, endTime };
+    const fields = { action, row, date, task, startTime, endTime };
     for (const [key, val] of Object.entries(fields)) {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = key;
-      input.value = val;
-      tempForm.appendChild(input);
+      if (val !== undefined && val !== "") {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = val;
+        tempForm.appendChild(input);
+      }
     }
 
     document.body.appendChild(tempForm);
     tempForm.submit();
     setTimeout(() => {
       document.body.removeChild(tempForm);
-      handleSuccessfulSubmission({ date, task, startTime, endTime });
+      handleSuccessfulSubmission({ row, date, task, startTime, endTime }, action === "update");
     }, 1200);
 
   } catch (fallbackErr) {
@@ -280,27 +397,32 @@ function submitViaHiddenIframe(date, task, startTime, endTime) {
   }
 }
 
-function handleSuccessfulSubmission(entry) {
-  showStatus("✓ Report saved successfully", "success");
-  taskInput.value = "";
+function handleSuccessfulSubmission(entry, isUpdate = false) {
+  showStatus(isUpdate ? "✓ Report updated successfully" : "✓ Report saved successfully", "success");
   
-  if (entry) {
-    addRecentReportCard(entry, true);
+  if (isUpdate) {
+    exitEditMode();
+  } else {
+    taskInput.value = "";
+    if (entry) {
+      addRecentReportCard(entry, true);
+    }
   }
 
   setTimeout(() => {
     loadRecentReports(false);
-  }, 2500);
+  }, 2200);
 }
 
 function setSubmittingState(submitting) {
   isSubmitting = submitting;
   submitBtn.disabled = submitting;
+  const isEditing = formActionInput.value === "update";
   if (submitting) {
-    btnText.textContent = "SAVING...";
+    btnText.textContent = isEditing ? "UPDATING..." : "SAVING...";
     btnSpinner.style.display = "inline-block";
   } else {
-    btnText.textContent = "SAVE REPORT";
+    btnText.textContent = isEditing ? "UPDATE REPORT" : "SAVE REPORT";
     btnSpinner.style.display = "none";
   }
 }
@@ -314,7 +436,7 @@ function showStatus(message, type) {
   if (type === "success") {
     setTimeout(() => {
       hideStatus();
-    }, 6000);
+    }, 5000);
   }
 }
 
@@ -323,7 +445,7 @@ function hideStatus() {
 }
 
 // ==========================================================================
-// Recent Reports Display
+// Recent Reports Display & Actions
 // ==========================================================================
 async function loadRecentReports(showAnimation = false) {
   if (!recentList) return;
@@ -337,6 +459,7 @@ async function loadRecentReports(showAnimation = false) {
     if (!response.ok) throw new Error("Fetch error");
     const data = await response.json();
     if (data.status === "success" && Array.isArray(data.reports)) {
+      currentReportsData = data.reports;
       renderRecentReports(data.reports);
     } else {
       fetchRecentViaJsonp();
@@ -357,6 +480,7 @@ function fetchRecentViaJsonp() {
   window[callbackName] = function(data) {
     try {
       if (data && data.status === "success" && Array.isArray(data.reports)) {
+        currentReportsData = data.reports;
         renderRecentReports(data.reports);
       } else {
         renderRecentPlaceholder("No reports recorded yet.");
@@ -370,7 +494,7 @@ function fetchRecentViaJsonp() {
   script.onerror = function() {
     delete window[callbackName];
     if (script.parentNode) script.parentNode.removeChild(script);
-    renderRecentPlaceholder("Recent reports will show once your first entry is added.");
+    renderRecentPlaceholder("Recent reports will show once recorded.");
   };
 
   script.src = `${SCRIPT_URL}?action=getRecent&callback=${callbackName}&t=${Date.now()}`;
@@ -410,10 +534,28 @@ function addRecentReportCard(report, prepend = false) {
   card.innerHTML = `
     <div class="recent-card-top">
       <span class="recent-date">${escapeHtml(report.date || "")}</span>
-      ${timeFormatted ? `<span class="recent-time">${escapeHtml(timeFormatted)}</span>` : ""}
+      <div class="recent-card-top-right">
+        ${timeFormatted ? `<span class="recent-time">${escapeHtml(timeFormatted)}</span>` : ""}
+        <div class="card-actions">
+          <button class="action-btn edit-btn" title="Edit entry" aria-label="Edit">✏️ Edit</button>
+          <button class="action-btn delete-btn" title="Delete entry" aria-label="Delete">🗑️</button>
+        </div>
+      </div>
     </div>
     <div class="recent-task">${escapeHtml(report.task || "")}</div>
   `;
+
+  // Attach Edit and Delete listeners
+  const editBtn = card.querySelector(".edit-btn");
+  const deleteBtn = card.querySelector(".delete-btn");
+
+  editBtn.addEventListener("click", () => {
+    startEditReport(report);
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    deleteReport(report, card);
+  });
 
   if (prepend && recentList.firstChild) {
     recentList.insertBefore(card, recentList.firstChild);

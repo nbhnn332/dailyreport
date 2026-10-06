@@ -136,6 +136,15 @@
           </div>
         </div>
 
+        <!-- Edit Mode Banner -->
+        <div id="edit-mode-banner" class="edit-mode-banner" style="display: none;">
+          <span>✏️ Editing Report <strong id="edit-row-label"></strong></span>
+          <button type="button" id="cancel-edit-btn" class="cancel-edit-btn">Cancel</button>
+        </div>
+
+        <input type="hidden" id="edit-row-input" name="row" value="">
+        <input type="hidden" id="form-action-input" name="action" value="add">
+
         <!-- Feedback Alerts -->
         <div id="status-message" class="status-banner" style="display: none;" role="alert">
           <span class="status-icon" id="status-icon">✓</span>
