@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SYBERCEC — DAILY REPORT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-badge">PRODUCTIVITY LOG</div>
+      <h1 class="brand-title">SYBERCEC</h1>
+      <p class="brand-subtitle">DAILY REPORT</p>
+    </header>
+
+    <!-- Main Entry Card -->
+    <main class="card form-card">
+      <!-- Hidden iframe to handle seamless cross-origin submission without redirects/CORS issues -->
+      <iframe name="hidden_submission_iframe" id="hidden_submission_iframe" style="display:none;"></iframe>
+
+      <form id="daily-report-form" target="hidden_submission_iframe" method="POST">
+        <!-- Date Group -->
+        <div class="form-group date-picker-group">
+          <label for="date-input" class="group-label">
+            <span class="label-title">DATE</span>
+            <span id="date-preview" class="date-friendly-pill">06 OCT 2026</span>
+          </label>
+          <div class="input-wrapper date-wrapper">
+            <input 
+              type="date" 
+              id="date-input" 
+              name="date" 
+              required
+              aria-label="Report Date"
+            >
+            <span class="input-icon">📅</span>
+          </div>
+        </div>
+
+        <!-- Task Group -->
+        <div class="form-group">
+          <label for="task-input" class="group-label">
+            <span class="label-title">WHAT DID YOU STUDY TODAY?</span>
+            <span class="char-count" id="task-char-count">Required</span>
+          </label>
+          <div class="input-wrapper textarea-wrapper">
+            <textarea 
+              id="task-input" 
+              name="task" 
+              rows="4" 
+              placeholder="What did you study or complete today?" 
+              required
+              aria-label="Task description"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Time Grid -->
+        <div class="time-grid">
+          <!-- Start Time -->
+          <div class="form-group time-group">
+            <label for="start-time-input" class="group-label">
+              <span class="label-title">START TIME</span>
+            </label>
+            <div class="input-wrapper time-wrapper">
+              <input 
+                type="time" 
+                id="start-time-input" 
+                name="startTime" 
+                required 
+                aria-label="Start Time"
+              >
+              <div class="time-display-pill" id="start-time-pill">--:--</div>
+            </div>
+          </div>
+
+          <!-- End Time -->
+          <div class="form-group time-group">
+            <label for="end-time-input" class="group-label">
+              <span class="label-title">END TIME</span>
+            </label>
+            <div class="input-wrapper time-wrapper">
+              <input 
+                type="time" 
+                id="end-time-input" 
+                name="endTime" 
+                required 
+                aria-label="End Time"
+              >
+              <div class="time-display-pill" id="end-time-pill">--:--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Alerts -->
+        <div id="status-message" class="status-banner" style="display: none;" role="alert">
+          <span class="status-icon" id="status-icon">✓</span>
+          <span class="status-text" id="status-text">Report saved successfully</span>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submit-btn" class="submit-btn">
+          <span class="btn-spinner" id="btn-spinner" style="display:none;"></span>
+          <span class="btn-text" id="btn-text">SAVE REPORT</span>
+        </button>
+      </form>
+    </main>
+
+    <!-- Recent Reports Section -->
+    <section class="card recent-section">
+      <div class="recent-header">
+        <h2 class="section-title">RECENT REPORTS</h2>
+        <button id="refresh-reports-btn" class="refresh-btn" title="Refresh sheet entries" aria-label="Refresh reports">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="recent-loading" class="recent-loading" style="display:none;">
+        <div class="skeleton-pulse"></div>
+        <div class="skeleton-pulse"></div>
+      </div>
+
+      <div id="recent-list" class="recent-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>SYBERCEC • Connected to Google Sheets</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

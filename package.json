@@ -1,0 +1,9 @@
+{
+  "name": "sybercec-daily-report",
+  "version": "1.0.0",
+  "description": "SYBERCEC — Personal Daily Reporting Web App",
+  "scripts": {
+    "dev": "npx serve frontend -p 3000",
+    "start": "npx serve frontend -p 3000"
+  }
+}
