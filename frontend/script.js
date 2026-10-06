@@ -6,7 +6,7 @@
  * ==========================================================================
  */
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4iZMKVfsYtDk8UWs-935v3ws81-LQsa2fAFd0UZ1WQG6Chz70hp0cLONz8SbByXXN/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBdf3NjGycwuAgJMRlqLR3ABqwK5SdjueBWnhbi1HnV45UfMQT6gXCJL5xJYhSySqz/exec";
 
 // Authentication
 const PASS_KEY = "212113";
