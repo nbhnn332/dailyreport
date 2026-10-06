@@ -150,6 +150,22 @@
       </form>
     </main>
 
+    <!-- Recent Reports Section -->
+    <section class="card recent-section">
+      <div class="recent-header">
+        <h2 class="section-title">RECENT REPORTS</h2>
+        <button id="refresh-reports-btn" class="refresh-btn" title="Refresh sheet entries" aria-label="Refresh reports">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="recent-list" class="recent-list">
+        <!-- Rendered dynamically from Google Sheet and immediate submissions -->
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="app-footer">
       <p>SYBERCEC • Connected to Google Sheets</p>

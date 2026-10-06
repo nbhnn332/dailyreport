@@ -32,6 +32,8 @@ const btnSpinner = document.getElementById("btn-spinner");
 const statusMessage = document.getElementById("status-message");
 const statusIcon = document.getElementById("status-icon");
 const statusText = document.getElementById("status-text");
+const recentList = document.getElementById("recent-list");
+const refreshReportsBtn = document.getElementById("refresh-reports-btn");
 
 let isSubmitting = false;
 
@@ -85,6 +87,7 @@ function showLogin() {
 function showApp() {
   loginModal.style.display = "none";
   appContainer.style.display = "flex";
+  loadRecentReports();
   taskInput.focus();
 }
 
@@ -162,6 +165,12 @@ function setupEventListeners() {
   });
 
   form.addEventListener("submit", handleSubmit);
+
+  if (refreshReportsBtn) {
+    refreshReportsBtn.addEventListener("click", () => {
+      loadRecentReports(true);
+    });
+  }
 }
 
 // ==========================================================================
@@ -225,7 +234,12 @@ async function handleSubmit(event) {
       body: formData.toString()
     });
 
-    handleSuccessfulSubmission();
+    handleSuccessfulSubmission({
+      date: formattedDate,
+      task: taskValue,
+      startTime: formattedStartTime,
+      endTime: formattedEndTime
+    });
 
   } catch (err) {
     console.warn("Direct fetch failed, falling back to hidden iframe form POST:", err);
@@ -256,7 +270,7 @@ function submitViaHiddenIframe(date, task, startTime, endTime) {
     tempForm.submit();
     setTimeout(() => {
       document.body.removeChild(tempForm);
-      handleSuccessfulSubmission();
+      handleSuccessfulSubmission({ date, task, startTime, endTime });
     }, 1200);
 
   } catch (fallbackErr) {
@@ -266,9 +280,17 @@ function submitViaHiddenIframe(date, task, startTime, endTime) {
   }
 }
 
-function handleSuccessfulSubmission() {
+function handleSuccessfulSubmission(entry) {
   showStatus("✓ Report saved successfully", "success");
   taskInput.value = "";
+  
+  if (entry) {
+    addRecentReportCard(entry, true);
+  }
+
+  setTimeout(() => {
+    loadRecentReports(false);
+  }, 2500);
 }
 
 function setSubmittingState(submitting) {
@@ -298,4 +320,114 @@ function showStatus(message, type) {
 
 function hideStatus() {
   statusMessage.style.display = "none";
+}
+
+// ==========================================================================
+// Recent Reports Display
+// ==========================================================================
+async function loadRecentReports(showAnimation = false) {
+  if (!recentList) return;
+
+  if (refreshReportsBtn && showAnimation) {
+    refreshReportsBtn.classList.add("rotating");
+  }
+
+  try {
+    const response = await fetch(`${SCRIPT_URL}?action=getRecent&t=${Date.now()}`);
+    if (!response.ok) throw new Error("Fetch error");
+    const data = await response.json();
+    if (data.status === "success" && Array.isArray(data.reports)) {
+      renderRecentReports(data.reports);
+    } else {
+      fetchRecentViaJsonp();
+    }
+  } catch (err) {
+    fetchRecentViaJsonp();
+  } finally {
+    if (refreshReportsBtn) {
+      setTimeout(() => refreshReportsBtn.classList.remove("rotating"), 500);
+    }
+  }
+}
+
+function fetchRecentViaJsonp() {
+  const callbackName = "sybercec_cb_" + Date.now();
+  const script = document.createElement("script");
+  
+  window[callbackName] = function(data) {
+    try {
+      if (data && data.status === "success" && Array.isArray(data.reports)) {
+        renderRecentReports(data.reports);
+      } else {
+        renderRecentPlaceholder("No reports recorded yet.");
+      }
+    } finally {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+  };
+
+  script.onerror = function() {
+    delete window[callbackName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    renderRecentPlaceholder("Recent reports will show once your first entry is added.");
+  };
+
+  script.src = `${SCRIPT_URL}?action=getRecent&callback=${callbackName}&t=${Date.now()}`;
+  document.body.appendChild(script);
+}
+
+function renderRecentReports(reports) {
+  if (!recentList) return;
+  recentList.innerHTML = "";
+  if (!reports || reports.length === 0) {
+    renderRecentPlaceholder("No reports logged yet. Your submissions will appear here.");
+    return;
+  }
+
+  reports.forEach(report => {
+    addRecentReportCard(report, false);
+  });
+}
+
+function renderRecentPlaceholder(message) {
+  if (!recentList) return;
+  recentList.innerHTML = `<div class="recent-empty">${escapeHtml(message)}</div>`;
+}
+
+function addRecentReportCard(report, prepend = false) {
+  if (!recentList) return;
+  const emptyElem = recentList.querySelector(".recent-empty");
+  if (emptyElem) emptyElem.remove();
+
+  const card = document.createElement("div");
+  card.className = "recent-card";
+
+  const timeFormatted = (report.startTime && report.endTime) 
+    ? `${report.startTime} → ${report.endTime}`
+    : (report.startTime || report.endTime || "");
+
+  card.innerHTML = `
+    <div class="recent-card-top">
+      <span class="recent-date">${escapeHtml(report.date || "")}</span>
+      ${timeFormatted ? `<span class="recent-time">${escapeHtml(timeFormatted)}</span>` : ""}
+    </div>
+    <div class="recent-task">${escapeHtml(report.task || "")}</div>
+  `;
+
+  if (prepend && recentList.firstChild) {
+    recentList.insertBefore(card, recentList.firstChild);
+  } else {
+    recentList.appendChild(card);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
