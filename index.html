@@ -10,10 +10,51 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
+  <!-- Login Screen Modal/Card -->
+  <div id="login-modal" class="login-wrapper">
+    <div class="card login-card">
+      <div class="brand-badge">SECURE ACCESS</div>
+      <h1 class="brand-title">SYBERCEC</h1>
+      <p class="brand-subtitle">DAILY REPORT</p>
+      
+      <form id="login-form" class="login-form">
+        <div class="form-group" style="margin-top: 20px;">
+          <label for="password-input" class="group-label">
+            <span class="label-title">ENTER PASSWORD</span>
+          </label>
+          <div class="input-wrapper">
+            <input 
+              type="password" 
+              id="password-input" 
+              placeholder="••••••" 
+              required 
+              autocomplete="current-password"
+              inputmode="numeric"
+              autofocus
+            >
+          </div>
+        </div>
+        
+        <div id="login-error" class="status-banner error" style="display: none; margin-top: 10px;">
+          <span class="status-icon">⚠</span>
+          <span id="login-error-text">Incorrect password</span>
+        </div>
+
+        <button type="submit" class="submit-btn" style="margin-top: 15px;">
+          <span>UNLOCK</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App (Hidden until authenticated) -->
+  <div class="app-container" id="app-container" style="display: none;">
     <!-- Header -->
     <header class="app-header">
-      <div class="brand-badge">PRODUCTIVITY LOG</div>
+      <div class="header-top-row">
+        <div class="brand-badge">PRODUCTIVITY LOG</div>
+        <button id="logout-btn" class="logout-btn" title="Lock App">Lock 🔒</button>
+      </div>
       <h1 class="brand-title">SYBERCEC</h1>
       <p class="brand-subtitle">DAILY REPORT</p>
     </header>
@@ -75,7 +116,6 @@
                 required 
                 aria-label="Start Time"
               >
-              <div class="time-display-pill" id="start-time-pill">--:--</div>
             </div>
           </div>
 
@@ -92,7 +132,6 @@
                 required 
                 aria-label="End Time"
               >
-              <div class="time-display-pill" id="end-time-pill">--:--</div>
             </div>
           </div>
         </div>
@@ -110,27 +149,6 @@
         </button>
       </form>
     </main>
-
-    <!-- Recent Reports Section -->
-    <section class="card recent-section">
-      <div class="recent-header">
-        <h2 class="section-title">RECENT REPORTS</h2>
-        <button id="refresh-reports-btn" class="refresh-btn" title="Refresh sheet entries" aria-label="Refresh reports">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-          </svg>
-        </button>
-      </div>
-
-      <div id="recent-loading" class="recent-loading" style="display:none;">
-        <div class="skeleton-pulse"></div>
-        <div class="skeleton-pulse"></div>
-      </div>
-
-      <div id="recent-list" class="recent-list">
-        <!-- Rendered dynamically -->
-      </div>
-    </section>
 
     <!-- Footer -->
     <footer class="app-footer">
