@@ -75,7 +75,6 @@
             <input 
               type="date" 
               id="date-input" 
-              name="date" 
               required
               aria-label="Report Date"
             >
@@ -112,7 +111,6 @@
               <input 
                 type="time" 
                 id="start-time-input" 
-                name="startTime" 
                 required 
                 aria-label="Start Time"
               >
@@ -128,7 +126,6 @@
               <input 
                 type="time" 
                 id="end-time-input" 
-                name="endTime" 
                 required 
                 aria-label="End Time"
               >
@@ -136,14 +133,18 @@
           </div>
         </div>
 
+        <!-- Hidden Formatted Inputs for Form Submission -->
+        <input type="hidden" id="formatted-date" name="date" value="">
+        <input type="hidden" id="formatted-start-time" name="startTime" value="">
+        <input type="hidden" id="formatted-end-time" name="endTime" value="">
+        <input type="hidden" id="edit-row-input" name="row" value="">
+        <input type="hidden" id="form-action-input" name="action" value="add">
+
         <!-- Edit Mode Banner -->
         <div id="edit-mode-banner" class="edit-mode-banner" style="display: none;">
           <span>✏️ Editing Report <strong id="edit-row-label"></strong></span>
           <button type="button" id="cancel-edit-btn" class="cancel-edit-btn">Cancel</button>
         </div>
-
-        <input type="hidden" id="edit-row-input" name="row" value="">
-        <input type="hidden" id="form-action-input" name="action" value="add">
 
         <!-- Feedback Alerts -->
         <div id="status-message" class="status-banner" style="display: none;" role="alert">

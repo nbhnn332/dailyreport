@@ -6,7 +6,7 @@
  * ==========================================================================
  */
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBdf3NjGycwuAgJMRlqLR3ABqwK5SdjueBWnhbi1HnV45UfMQT6gXCJL5xJYhSySqz/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4iZMKVfsYtDk8UWs-935v3ws81-LQsa2fAFd0UZ1WQG6Chz70hp0cLONz8SbByXXN/exec";
 
 // Authentication
 const PASS_KEY = "212113";
@@ -35,6 +35,12 @@ const statusIcon = document.getElementById("status-icon");
 const statusText = document.getElementById("status-text");
 const recentList = document.getElementById("recent-list");
 const refreshReportsBtn = document.getElementById("refresh-reports-btn");
+
+// Formatted hidden inputs for reliable cross-origin form submission
+const formattedDateInput = document.getElementById("formatted-date");
+const formattedStartTimeInput = document.getElementById("formatted-start-time");
+const formattedEndTimeInput = document.getElementById("formatted-end-time");
+const hiddenIframe = document.getElementById("hidden_submission_iframe");
 
 // DOM Elements - Edit Mode
 const editModeBanner = document.getElementById("edit-mode-banner");
@@ -293,8 +299,8 @@ async function handleSubmit(event) {
   const taskValue = taskInput.value.trim();
   const startTimeValue = startTimeInput.value;
   const endTimeValue = endTimeInput.value;
-  const actionType = formActionInput.value || "add";
-  const targetRow = editRowInput.value;
+  const actionType = formActionInput ? (formActionInput.value || "add") : "add";
+  const targetRow = editRowInput ? editRowInput.value : "";
 
   hideStatus();
 
@@ -326,8 +332,25 @@ async function handleSubmit(event) {
   const formattedStartTime = formatTo12Hour(startTimeValue);
   const formattedEndTime = formatTo12Hour(endTimeValue);
 
+  // Set the form inputs and attributes
+  form.action = SCRIPT_URL;
+  form.target = "hidden_submission_iframe";
+  if (formattedDateInput) formattedDateInput.value = formattedDate;
+  if (formattedStartTimeInput) formattedStartTimeInput.value = formattedStartTime;
+  if (formattedEndTimeInput) formattedEndTimeInput.value = formattedEndTime;
+  if (formActionInput) formActionInput.value = actionType;
+  if (editRowInput) editRowInput.value = targetRow || "";
+
   setSubmittingState(true);
 
+  // 1. Submit natively via HTML form to hidden iframe (bypasses browser CORS & redirects completely)
+  try {
+    form.submit();
+  } catch (formErr) {
+    console.warn("Direct form.submit warning:", formErr);
+  }
+
+  // 2. Also send fetch as parallel fallback
   try {
     const formData = new URLSearchParams();
     formData.append("action", actionType);
@@ -339,15 +362,21 @@ async function handleSubmit(event) {
     formData.append("startTime", formattedStartTime);
     formData.append("endTime", formattedEndTime);
 
-    await fetch(SCRIPT_URL, {
+    fetch(SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
       },
       body: formData.toString()
-    });
+    }).catch(e => console.warn("Fetch fallback notice:", e));
+  } catch (fetchErr) {
+    console.warn("Fetch error:", fetchErr);
+  }
 
+  // Complete submission and update UI
+  setTimeout(() => {
+    setSubmittingState(false);
     handleSuccessfulSubmission({
       row: targetRow,
       date: formattedDate,
@@ -355,46 +384,7 @@ async function handleSubmit(event) {
       startTime: formattedStartTime,
       endTime: formattedEndTime
     }, actionType === "update");
-
-  } catch (err) {
-    console.warn("Direct fetch failed, falling back to hidden iframe form POST:", err);
-    submitViaHiddenIframe(actionType, targetRow, formattedDate, taskValue, formattedStartTime, formattedEndTime);
-  } finally {
-    setSubmittingState(false);
-  }
-}
-
-function submitViaHiddenIframe(action, row, date, task, startTime, endTime) {
-  try {
-    const tempForm = document.createElement("form");
-    tempForm.method = "POST";
-    tempForm.action = SCRIPT_URL;
-    tempForm.target = "hidden_submission_iframe";
-    tempForm.style.display = "none";
-
-    const fields = { action, row, date, task, startTime, endTime };
-    for (const [key, val] of Object.entries(fields)) {
-      if (val !== undefined && val !== "") {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = val;
-        tempForm.appendChild(input);
-      }
-    }
-
-    document.body.appendChild(tempForm);
-    tempForm.submit();
-    setTimeout(() => {
-      document.body.removeChild(tempForm);
-      handleSuccessfulSubmission({ row, date, task, startTime, endTime }, action === "update");
-    }, 1200);
-
-  } catch (fallbackErr) {
-    console.error("Submission failed:", fallbackErr);
-    showStatus("Unable to save report. Please try again.", "error");
-    setSubmittingState(false);
-  }
+  }, 1000);
 }
 
 function handleSuccessfulSubmission(entry, isUpdate = false) {
